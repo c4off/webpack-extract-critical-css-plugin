@@ -1,0 +1,37 @@
+body {
+	background-color: tan;
+}
+@media custom-media-for-module-2 {
+	.some-block {
+		width: 100px;
+
+		&--modifier {
+			color: red;
+		}
+	}
+}
+.another-block {
+	width: 200px;
+	@media custom-media-for-module-2 {
+	  &--modifier {
+			color: blue;
+		}
+	}
+}
+@media custom-media-to-be-splitted-2 {
+	@media screen and (max-width: 992px) {
+		body {
+			background-color: blue;
+		}
+	}
+}
+@media screen and (max-width: 600px) {
+	body {
+		background-color: olive;
+	}
+	@media custom-media-to-be-splitted-2 {
+	  .another-block {
+			width: 100px;
+		}
+	}
+}

@@ -1,0 +1,39 @@
+{
+  "name": "webpack-extract-critical-css-plugin",
+  "version": "0.0.1",
+  "description": "A plugin to create separate chunk with only critical css.",
+  "main": "index.js",
+  "author": "Anton Sychev <a.c4off@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/c4off/webpack-extract-critical-css-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/c4off/webpack-extract-critical-css-plugin"
+  },
+  "homepage": "https://github.com/c4off/webpack-extract-critical-css-plugin",
+  "keywords": [
+    "webpack",
+    "css",
+    "rtl"
+  ],
+  "scripts": {
+    "clean": "rm -rf tests/dist* & rm -rf dist* & rm -rf ./tests/node_modules/webpack-extract-critical-css-plugin",
+    "build": "npm run clean && test -d dist || mkdir -p dist && babel src --out-dir dist",
+    "copy_to_tests": "cp -r dist ./tests/node_modules/webpack-extract-critical-css-plugin",
+    "test": "npm run build && npm run copy_to_tests && cd tests && npm run mocha",
+    "pre-publish": "npm run test && cp ./package.json ./dist/package.json"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0",
+    "css-diff": "^0.4.1",
+    "cssnano": "^4.1.10",
+    "postcss": "^7.0.16",
+    "postcss-media-query-parser": "^0.2.3",
+    "postcss-value-parser": "^3.3.1",
+    "webpack": "^4.28.2",
+    "webpack-sources": "1.3.0"
+  }
+}
