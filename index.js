@@ -1,9 +1,10 @@
-import { forEachOfLimit } from 'async';
+const { forEachOfLimit } = require ('async');
+const { ConcatSource } = require("webpack-sources");
 
 class ExtractCriticalCSSPlugin {
-	pluginName = 'tv-webpack-extract-critical-css-plugin';
-
 	constructor(options) {
+		this.pluginName = 'tv-webpack-extract-critical-css-plugin';
+
 		// TODO: do it right
 		this.options = options || {
 			bundles: []
@@ -14,6 +15,7 @@ class ExtractCriticalCSSPlugin {
 		const criticalChunkName = 'feed-widget-idea';
 
 		compiler.hooks.emit.tap(this.pluginName, (compilation) => {
+			debugger;
 			const criticalChunk = compilation.chunks.filter(chunk => chunk.name === criticalChunkName)[0];
 			if (!criticalChunk) {
 				throw new Error(`${this.pluginName} error. Cannot find chunk ${criticalChunk}`);
@@ -91,3 +93,5 @@ class ExtractCriticalCSSPlugin {
 		});
 	}
 }
+
+module.exports = ExtractCriticalCSSPlugin;
