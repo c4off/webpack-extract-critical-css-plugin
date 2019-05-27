@@ -2,20 +2,34 @@ const { forEachOfLimit } = require ('async');
 const { ConcatSource } = require('webpack-sources');
 const path = require('path');
 const postcss = require('postcss');
+const cssnano = require('cssnano');
 
 const defaultOptions = {
-	customMedia: 'tv-critical',
+	customMedia: {
+		'tv-category-critical': 'category-critical',
+		'tv-some-dummy': 'some-dummy'
+	},
+	// customMedia: { 'tv-category-critical': 'category-critical' },
+	minimize: {
+		// TODO: ???
+		browsers: ['> 1%', 'last 2 versions', 'Firefox >= 20'],
+		preset: 'default',
+	}
 }
-
+// TODO: now it's just a stub. POC-version
 class ExtractCriticalCSSPlugin {
 	constructor(options = {}) {
 		this.pluginName = 'tv-webpack-extract-critical-css-plugin';
 		// TODO: do it right
-		this.options = Object.assign({}, defaultOptions, options);
+		debugger;
+		this._options = Object.assign({}, defaultOptions, options);
+		// generating at-rule filter
+		this._atRuleFilter = new RegExp(Object.keys(this._options.customMedia).map(key => `(${key})`).join('|'));
+		// this._updatedChunkFilenamesMap = {};
 	}
 
 	apply(compiler) {
-		compiler.hooks.emit.tap(this.pluginName, (compilation) => {
+		compiler.hooks.emit.tapAsync(this.pluginName, (compilation, callback) => {
 			// const criticalChunk = compilation.chunks.filter(chunk => chunk.name === criticalChunkName)[0];
 			// if (!criticalChunk) {
 			// 	throw new Error(`${this.pluginName} error. Cannot find chunk ${criticalChunk}`);
@@ -32,10 +46,17 @@ class ExtractCriticalCSSPlugin {
 			// 				// filename = asset.replace(path.basename(asset, '.css'), newFilename)
 			// 	}
 			// });
-			const criticalNodes = [];
+
 			// forEachOfLimit(compilation.chunks, 5, (chunk, key, cb) => {
 			// var rtlFiles = [],
 			// 	cssnanoPromise = Promise.resolve()
+			const mediaRuleNames = Object.keys(this._options.customMedia);
+			const criticalNodes = [];
+
+			mediaRuleNames.forEach(mediaRuleName => {
+				criticalNodes[mediaRuleName] = [];
+			})
+
 			compilation.chunks.forEach((chunk, key, cb) => {
 				chunk.files.forEach((asset) => {
 					if (path.extname(asset) === '.css') {
@@ -43,18 +64,41 @@ class ExtractCriticalCSSPlugin {
 						let source = postcss.parse(baseSource);
 
 						source.walkAtRules('media', rule => {
-							if (rule.params.indexOf(this.options.customMedia) !== -1) {
-								criticalNodes.push(rule);
-							}
+							mediaRuleNames.forEach(mediaRuleName => {
+								if (rule.params.indexOf(mediaRuleName) !== -1) {
+									criticalNodes[mediaRuleName].push(rule);
+								}
+							})
 						});
 					}
 				});
 			});
-			debugger;
-			const criticalNode = new postcss.root();
-			criticalNodes.forEach(node => criticalNode.append(node));
-			debugger;
+
+			let cssMinifyPromises = [];
+			mediaRuleNames.forEach(mediaRuleName => {
+				if (!criticalNodes[mediaRuleName].length) {
+					return;
+				}
+				const criticalNode = new postcss.root();
+				criticalNodes[mediaRuleName].forEach(node => criticalNode.append(node));
+				// add newly generated css to assets
+				const newFilename = path.basename(`${this._options.customMedia[mediaRuleName]}.css`);
+				const cssMinifyPromise = cssnano.process(criticalNode.toString());
+				cssMinifyPromises.push(cssMinifyPromise);
+				cssMinifyPromise.then((result) => {
+					// cssnano.process(criticalNode.toString(), this.options.minimize).then((result) => {
+					compilation.assets[newFilename] = new ConcatSource(result.css);
+				});
+			});
+			// resolve only after all sources are minified and added to compilation.assets
+			Promise.all(cssMinifyPromises).then(() => {
+				callback();
+			})
 		});
+	}
+	
+	_excludeDuplicates(criticalNodes) {
+		return criticalNodes
 	}
 }
 
