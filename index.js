@@ -38,28 +38,6 @@ class ExtractCriticalCSSPlugin {
 
 	apply(compiler) {
 		compiler.hooks.emit.tapAsync(this.pluginName, (compilation, callback) => {
-			// const criticalChunk = compilation.chunks.filter(chunk => chunk.name === criticalChunkName)[0];
-			// if (!criticalChunk) {
-			// 	throw new Error(`${this.pluginName} error. Cannot find chunk ${criticalChunk}`);
-			// }
-			// criticalChunk.files.forEach((asset) => {
-			// 	// TODO: Don't forget of [contenthash]
-			// 	if (path.extname(asset) === '.css') {
-			// 		const baseSource = compilation.assets[asset].source();
-			// 		// TODO: parse source
-			// 		const criticalSource = '.tv-critical { color: red}';
-			// 		const newAssetName = asset + '-critical';
-			// 		const newFilename = `${path.basename(newAssetName, '.css')}`;
-			// 		compilation.assets[newFilename] = new ConcatSource(criticalSource);
-			// 				// filename = asset.replace(path.basename(asset, '.css'), newFilename)
-			// 	}
-			// });
-
-			// forEachOfLimit(compilation.chunks, 5, (chunk, key, cb) => {
-			// var rtlFiles = [],
-			// 	cssnanoPromise = Promise.resolve()
-
-
 			this._colllectCriticalNodes(compilation);
 
 			// resolve only after all sources are minified and added to compilation.assets
@@ -68,10 +46,10 @@ class ExtractCriticalCSSPlugin {
 			})
 		});
 	}
-	// !!!!!
-	// TODO:учесть, что правило может быть сразу для нескольких кастомных mr
+
 	_processRule(rule) {
-		this.chunksMap = {};
+		// check if we use several custom @media in one rule
+		const chunksMap = {};
 		let mediaString = rule.params;
 		 this._mediaRuleNames.forEach(mediaRuleName => {
 		 	if (mediaString.indexOf(mediaRuleName) !== -1) {
@@ -79,15 +57,23 @@ class ExtractCriticalCSSPlugin {
 		 		mediaString = mediaString.split(mediaRuleName).join('');
 		    }
 		 });
+		let processedRules = [];
+		// if theres no @media other than custom,
+		// use only child rules
 		if (mediaString.trim() === '') {
-			rule.replaceWith(rule.nodes);
-			return rule.nodes;
+            processedRules = rule.nodes;
+        } else {
+			// otherwise preserve non-custom @media
+			const processedRule = postcss.parse(`@media ${mediaString}`);
+			processedRule.append(rule.nodes);
+			processedRules = [processedRule];
 		}
-		const processedRule = postcss.process(`@media ${mediaString}`);
-		processedRule.append(rule.nodes);
-		rule.replaceWith(processedRule);
-
-		return [processedRule];
+		// replace rule in original chunk
+		rule.replaceWith(processedRules);
+		// add critical rules to corresponding new chunks
+		Object.keys(chunksMap).forEach(mediaRuleName => {
+            this._criticalNodes[mediaRuleName].concat(processedRules);
+        });
 	}
 
 	_colllectCriticalNodes(compilation) {
@@ -98,17 +84,8 @@ class ExtractCriticalCSSPlugin {
 					let source = postcss.parse(baseSource);
 
 					source.walkAtRules('media', rule => {
-						debugger;
-						// this._mediaRuleNames.forEach(mediaRuleName => {
-						// 	// TODO:учесть, что правило может быть сразу для нескольких кастомных mr
-						// 	if (rule.params.indexOf(mediaRuleName) !== -1) {
-						// 		const processedRule = this._processRule(rule, mediaRuleName);
-						// 		this._criticalNodes[mediaRuleName].push(processedRule);
-						// 	}
-						// })
 						if (this._atRuleFilter.test(rule.params)) {
-							const processedRules = this._processRule(rule, mediaRuleName);
-							this._criticalNodes[mediaRuleName].concat(processedRules);
+							this._processRule(rule);
 						}
 					});
 				}
@@ -128,6 +105,7 @@ class ExtractCriticalCSSPlugin {
 			const newFilename = path.basename(`${this._options.customMedia[mediaRuleName]}.css`);
 			const cssMinifyPromise = cssnano.process(criticalNode.toString());
 			cssMinifyPromises.push(cssMinifyPromise);
+			debugger;
 			cssMinifyPromise.then((result) => {
 				// cssnano.process(criticalNode.toString(), this.options.minimize).then((result) => {
 				compilation.assets[newFilename] = new ConcatSource(result.css);
