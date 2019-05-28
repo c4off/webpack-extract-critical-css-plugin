@@ -1,8 +1,9 @@
-const { forEachOfLimit } = require ('async');
+// const { forEachOfLimit } = require ('async');
 const { ConcatSource } = require('webpack-sources');
 const path = require('path');
 const postcss = require('postcss');
 const cssnano = require('cssnano');
+const mediaParser = require('postcss-media-query-parser').default;
 
 const defaultOptions = {
 	customMedia: {
@@ -34,6 +35,11 @@ class ExtractCriticalCSSPlugin {
 		// generating at-rule filter
 		this._atRuleFilter = new RegExp(Object.keys(this._options.customMedia).map(key => `(${key})`).join('|'));
 		// this._updatedChunkFilenamesMap = {};
+		// media nodes values from 'mediaParser'
+		this._meaningfulMediaNodes = [
+			'media-type',
+			'media-feature-expression',
+		]
 	}
 
 	apply(compiler) {
@@ -47,14 +53,86 @@ class ExtractCriticalCSSPlugin {
 		});
 	}
 
-	_processRule(rule) {
+	_isCustomOnlyMediaNode(node, chunksMap) {
+		let mediaQueriesCount = 0;
+
+		node.walk(mediaTypeObj => {
+			if (this._meaningfulMediaNodes.indexOf(mediaTypeObj.type) === -1) {
+				return;
+			}
+			mediaQueriesCount += 1;
+			const mediaValue = mediaTypeObj.value;
+			if (this._criticalNodes[mediaValue]) {
+				chunksMap[mediaValue] = mediaTypeObj.sourceIndex;
+			}
+		});
+
+		return chunksMap.length === mediaQueriesCount;
+	}
+
+	_truncateMediaQuery(mediaRule, chunksMap) {
+		debugger;
+		// return truncatedString
+	}
+
+	_getFilteredMediaQuery(rule) {
 		// check if we use several custom @media in one rule
 		const chunksMap = {};
+		let parsedMediaObj = mediaParser(rule.params);
+		let mediaQueriesCount = 0;
+		let updatedMediaRule = '';
+
+		// here base obj always holds a "container"
+		// its children are real @media nodes
+		// TODO nodes[0] - only the first node (e.g. @media screen, not print {})
+
+		parsedMediaObj.nodes.forEach(mediaRule => {
+			// has sideeffect, chunksMap is filled with 'our' custom media-types
+			if (!this._isCustomOnlyMediaNode(mediaRule, chunksMap)) {
+				updatedMediaRule += this._truncateMediaQuery(mediaRule, chunksMap);
+			}
+		});
+
+
+		debugger;
+		parsedMediaObj.nodes[0].walk(mediaTypeObj => {
+			if (this._meaningfulMediaNodes.indexOf(mediaTypeObj.type) === -1) {
+				if (this._skippedNodes.indexOf(mediaTypeObj.type) === -1) {
+					updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
+				}
+				return;
+			}
+			mediaQueriesCount += 1;
+			debugger;
+			// find our 'custom' nodes and replace it with 'all'
+			const mediaValue = mediaTypeObj.value;
+			if (this._criticalNodes[mediaValue]) {
+				chunksMap[mediaValue] = mediaTypeObj.sourceIndex;
+				mediaTypeObj.value = 'all';
+			}
+			updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
+		});
+		debugger;
+		// if we have only `custom` media-queries
+		// so we can omit @media at all
+		if (Object.keys(chunksMap).length === mediaQueriesCount) {
+			updatedMediaRule = null;
+		}
+
+		return { chunksMap: chunksMap, updatedMediaRule: updatedMediaRule };
+	}
+	
+	_processRule(rule) {
+		// TODO:
+		const { chunksMap, updatedMediaRule } = this._getFilteredMediaQuery(rule);
+		// let chunksMap = {};
+
 		let mediaString = rule.params;
 		 this._mediaRuleNames.forEach(mediaRuleName => {
 		 	if (mediaString.indexOf(mediaRuleName) !== -1) {
 		 		chunksMap[mediaRuleName] = 1;
-		 		mediaString = mediaString.split(mediaRuleName).join('');
+			    // mediaString = mediaString.split(mediaRuleName).join('');
+			    mediaString = mediaString.replace(mediaRuleName, 'all');
 		    }
 		 });
 		let processedRules = [];
@@ -68,26 +146,42 @@ class ExtractCriticalCSSPlugin {
 			processedRule.append(rule.nodes);
 			processedRules = [processedRule];
 		}
-		// replace rule in original chunk
-		rule.replaceWith(processedRules);
 		// add critical rules to corresponding new chunks
 		Object.keys(chunksMap).forEach(mediaRuleName => {
-            this._criticalNodes[mediaRuleName].concat(processedRules);
-        });
+			this._criticalNodes[mediaRuleName] = this._criticalNodes[mediaRuleName].concat(processedRules);
+		});
+
+		return processedRules.map(processedRule => processedRule.clone());
 	}
 
 	_colllectCriticalNodes(compilation) {
 		compilation.chunks.forEach((chunk, key, cb) => {
 			chunk.files.forEach((asset) => {
 				if (path.extname(asset) === '.css') {
-					const baseSource = compilation.assets[asset].source()
+					const baseSource = compilation.assets[asset].source();
 					let source = postcss.parse(baseSource);
+					let sourceModified = null;
 
 					source.walkAtRules('media', rule => {
 						if (this._atRuleFilter.test(rule.params)) {
-							this._processRule(rule);
+							const processedRules = this._processRule(rule);
+							// replace rule in original chunk
+							rule.replaceWith(processedRules.map(processedRule => processedRule.clone()));
+							sourceModified = true;
 						}
 					});
+
+					if(sourceModified) {
+						source.walkAtRules('media', rule => {
+							if (this._atRuleFilter.test(rule.params)) {
+								debugger;
+							}
+						});
+					}
+
+					if(sourceModified) {
+						compilation.assets[asset] = new ConcatSource(source.toString());
+					}
 				}
 			});
 		});
@@ -105,9 +199,7 @@ class ExtractCriticalCSSPlugin {
 			const newFilename = path.basename(`${this._options.customMedia[mediaRuleName]}.css`);
 			const cssMinifyPromise = cssnano.process(criticalNode.toString());
 			cssMinifyPromises.push(cssMinifyPromise);
-			debugger;
 			cssMinifyPromise.then((result) => {
-				// cssnano.process(criticalNode.toString(), this.options.minimize).then((result) => {
 				compilation.assets[newFilename] = new ConcatSource(result.css);
 			});
 		});
