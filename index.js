@@ -53,26 +53,83 @@ class ExtractCriticalCSSPlugin {
 		});
 	}
 
-	_isCustomOnlyMediaNode(node, chunksMap) {
+	_isCustomOnlyMediaNode(node, customMediaTypes) {
 		let mediaQueriesCount = 0;
+		const currentCustomMediaTypes = {};
 
-		node.walk(mediaTypeObj => {
+		node.each(mediaTypeObj => {
 			if (this._meaningfulMediaNodes.indexOf(mediaTypeObj.type) === -1) {
 				return;
 			}
 			mediaQueriesCount += 1;
 			const mediaValue = mediaTypeObj.value;
 			if (this._criticalNodes[mediaValue]) {
-				chunksMap[mediaValue] = mediaTypeObj.sourceIndex;
+				customMediaTypes[mediaValue] = 1;
+				currentCustomMediaTypes[mediaValue] = 1;
 			}
 		});
 
-		return chunksMap.length === mediaQueriesCount;
+		return Object.keys(currentCustomMediaTypes).length === mediaQueriesCount;
 	}
 
-	_truncateMediaQuery(mediaRule, chunksMap) {
-		debugger;
-		// return truncatedString
+	/**
+	 * Removes custom media-type from media query string
+	 * @param mediaRule
+	 * @param chunksMap
+	 * @private
+	 */
+	_truncateMediaQuery(mediaRuleNode) {
+		function nodeValue(node) {
+			return node.before + node.value + node.after;
+		}
+
+		let potentialBeforeKeyword = null;
+		let nodeToRemove = null;
+
+		let truncatedMediaRuleString = '';
+
+		mediaRuleNode.each(node => {
+			switch (node.type) {
+				case 'keyword':
+					// if there's a custom rule found previously
+					// skip it along with current 'and'
+					// otherwise remember the node
+					if (nodeToRemove === null) {
+						potentialBeforeKeyword = node;
+					} else {
+						nodeToRemove = null;
+					}
+					break;
+				case 'media-feature-expression':
+					if (potentialBeforeKeyword) {
+						truncatedMediaRuleString += nodeValue(potentialBeforeKeyword);
+						potentialBeforeKeyword = null;
+					}
+					truncatedMediaRuleString += nodeValue(node);
+					break;
+				case 'media-type':
+					// not custom rule
+					if (this._mediaRuleNames.indexOf(node.value) === -1) {
+						if (potentialBeforeKeyword) {
+							truncatedMediaRuleString += nodeValue(potentialBeforeKeyword);
+							potentialBeforeKeyword = null;
+						}
+						truncatedMediaRuleString += nodeValue(node);
+						break;
+					}
+					// custom rule found
+
+					// if there's a potential 'and' before custom node,
+					// just skip them both, else remember to remove custom
+					// rule and keyword after the rule
+					if (potentialBeforeKeyword === null) {
+						nodeToRemove = node;
+					}
+					break;
+			}
+		});
+
+		return truncatedMediaRuleString;
 	}
 
 	_getFilteredMediaQuery(rule) {
@@ -80,69 +137,56 @@ class ExtractCriticalCSSPlugin {
 		const chunksMap = {};
 		let parsedMediaObj = mediaParser(rule.params);
 		let mediaQueriesCount = 0;
-		let updatedMediaRule = '';
+		let updatedMediaRules = [];
 
-		// here base obj always holds a "container"
-		// its children are real @media nodes
-		// TODO nodes[0] - only the first node (e.g. @media screen, not print {})
-
-		parsedMediaObj.nodes.forEach(mediaRule => {
-			// has sideeffect, chunksMap is filled with 'our' custom media-types
-			if (!this._isCustomOnlyMediaNode(mediaRule, chunksMap)) {
-				updatedMediaRule += this._truncateMediaQuery(mediaRule, chunksMap);
+		parsedMediaObj.each(mediaRuleNode => {
+			// has side effect, chunksMap is filled with 'our' custom media-types
+			if (!this._isCustomOnlyMediaNode(mediaRuleNode, chunksMap)) {
+				updatedMediaRules.push(this._truncateMediaQuery(mediaRuleNode, chunksMap));
 			}
 		});
 
+		return { chunksMap: chunksMap, updatedMediaRule: updatedMediaRules.join(',') };
+		// debugger;
+		// parsedMediaObj.nodes[0].each(mediaTypeObj => {
+		// 	if (this._meaningfulMediaNodes.indexOf(mediaTypeObj.type) === -1) {
+		// 		if (this._skippedNodes.indexOf(mediaTypeObj.type) === -1) {
+		// 			updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
+		// 		}
+		// 		return;
+		// 	}
+		// 	mediaQueriesCount += 1;
+		// 	debugger;
+		// 	// find our 'custom' nodes and replace it with 'all'
+		// 	const mediaValue = mediaTypeObj.value;
+		// 	if (this._criticalNodes[mediaValue]) {
+		// 		chunksMap[mediaValue] = mediaTypeObj.sourceIndex;
+		// 		mediaTypeObj.value = 'all';
+		// 	}
+		// 	updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
+		// });
+		// debugger;
+		// // if we have only `custom` media-queries
+		// // so we can omit @media at all
+		// if (Object.keys(chunksMap).length === mediaQueriesCount) {
+		// 	updatedMediaRule = null;
+		// }
 
-		debugger;
-		parsedMediaObj.nodes[0].walk(mediaTypeObj => {
-			if (this._meaningfulMediaNodes.indexOf(mediaTypeObj.type) === -1) {
-				if (this._skippedNodes.indexOf(mediaTypeObj.type) === -1) {
-					updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
-				}
-				return;
-			}
-			mediaQueriesCount += 1;
-			debugger;
-			// find our 'custom' nodes and replace it with 'all'
-			const mediaValue = mediaTypeObj.value;
-			if (this._criticalNodes[mediaValue]) {
-				chunksMap[mediaValue] = mediaTypeObj.sourceIndex;
-				mediaTypeObj.value = 'all';
-			}
-			updatedMediaRule += mediaTypeObj.before + mediaTypeObj.value + mediaTypeObj.after;
-		});
-		debugger;
-		// if we have only `custom` media-queries
-		// so we can omit @media at all
-		if (Object.keys(chunksMap).length === mediaQueriesCount) {
-			updatedMediaRule = null;
-		}
-
-		return { chunksMap: chunksMap, updatedMediaRule: updatedMediaRule };
+		// return { chunksMap: chunksMap, updatedMediaRule: updatedMediaRule };
 	}
 	
 	_processRule(rule) {
-		// TODO:
-		const { chunksMap, updatedMediaRule } = this._getFilteredMediaQuery(rule);
-		// let chunksMap = {};
-
-		let mediaString = rule.params;
-		 this._mediaRuleNames.forEach(mediaRuleName => {
-		 	if (mediaString.indexOf(mediaRuleName) !== -1) {
-		 		chunksMap[mediaRuleName] = 1;
-			    // mediaString = mediaString.split(mediaRuleName).join('');
-			    mediaString = mediaString.replace(mediaRuleName, 'all');
-		    }
-		 });
+		debugger;
 		let processedRules = [];
-		// if theres no @media other than custom,
-		// use only child rules
-		if (mediaString.trim() === '') {
+
+		const { chunksMap, updatedMediaRule } = this._getFilteredMediaQuery(rule);
+
+		if (updatedMediaRule === '') {
             processedRules = rule.nodes;
         } else {
 			// otherwise preserve non-custom @media
-			const processedRule = postcss.parse(`@media ${mediaString}`);
+			const processedRule = postcss.parse(`@media ${updatedMediaRule}`).last;
+			// TODO: maybe, appendChild
 			processedRule.append(rule.nodes);
 			processedRules = [processedRule];
 		}
@@ -152,6 +196,36 @@ class ExtractCriticalCSSPlugin {
 		});
 
 		return processedRules.map(processedRule => processedRule.clone());
+
+
+
+		// let chunksMap = {};
+
+		// let mediaString = rule.params;
+		//  this._mediaRuleNames.forEach(mediaRuleName => {
+		//  	if (mediaString.indexOf(mediaRuleName) !== -1) {
+		//  		chunksMap[mediaRuleName] = 1;
+		// 	    // mediaString = mediaString.split(mediaRuleName).join('');
+		// 	    mediaString = mediaString.replace(mediaRuleName, 'all');
+		//     }
+		//  });
+		// let processedRules = [];
+		// // if theres no @media other than custom,
+		// // use only child rules
+		// if (mediaString.trim() === '') {
+        //     processedRules = rule.nodes;
+        // } else {
+		// 	// otherwise preserve non-custom @media
+		// 	const processedRule = postcss.parse(`@media ${mediaString}`);
+		// 	processedRule.append(rule.nodes);
+		// 	processedRules = [processedRule];
+		// }
+		// // add critical rules to corresponding new chunks
+		// Object.keys(chunksMap).forEach(mediaRuleName => {
+		// 	this._criticalNodes[mediaRuleName] = this._criticalNodes[mediaRuleName].concat(processedRules);
+		// });
+		//
+		// return processedRules.map(processedRule => processedRule.clone());
 	}
 
 	_colllectCriticalNodes(compilation) {
