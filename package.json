@@ -1,6 +1,6 @@
 {
   "name": "@tradingview/webpack-extract-critical-css-plugin",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Webpack plugin to extract critical css from bundle",
   "main": "src/index.js",
   "author": "Anton Sychev <a.c4off@gmail.com>",
@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "clean": "rm -rf test/dist*",
-    "build": "test -d dist || mkdir -p dist && babel src --out-dir dist && node build",
+    "build": "test -d dist || mkdir -p dist && babel src --out-dir dist && node build && cp README.md dist/Readme.md",
     "test": "npm run clean && npm run build && node build/prod-ready"
   },
   "license": "MIT",
