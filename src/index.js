@@ -12,9 +12,13 @@ const defaultOptions = {
 	},
 	// customMedia: { 'tv-category-critical': 'category-critical' },
 	minimize: {
-		// TODO: ???
 		browsers: ['> 1%', 'last 2 versions', 'Firefox >= 20'],
 		preset: 'default',
+	},
+	rtlPluginSupport: false,
+	rtlOptions: {
+		// should be surrounded by dots. E.g. `filename.rtl.css`
+		fileNameTag: 'rtl'
 	}
 }
 // TODO: now it's just a stub. POC-version
@@ -24,12 +28,17 @@ class ExtractCriticalCSSPlugin {
 		// TODO: do it right
 		// perform params check
 		this._options = Object.assign({}, defaultOptions, options);
+		this._rtlSupport = this._options.rtlPluginSupport;
 
 		this._mediaRuleNames = Object.keys(this._options.customMedia);
 		this._criticalNodes = [];
 
 		this._mediaRuleNames.forEach(mediaRuleName => {
 			this._criticalNodes[mediaRuleName] = [];
+			if (this._rtlSupport) {
+				const mediaRuleNameRTL = `${mediaRuleName}.${this._options.rtlOptions.fileNameTag}`
+				this._criticalNodes[mediaRuleNameRTL] = [];
+			}
 		})
 
 		// generating at-rule filter
@@ -75,7 +84,6 @@ class ExtractCriticalCSSPlugin {
 	/**
 	 * Removes custom media-type from media query string
 	 * @param mediaRule
-	 * @param chunksMap
 	 * @private
 	 */
 	_truncateMediaQuery(mediaRuleNode) {
@@ -174,9 +182,8 @@ class ExtractCriticalCSSPlugin {
 
 		// return { chunksMap: chunksMap, updatedMediaRule: updatedMediaRule };
 	}
-	
-	_processRule(rule) {
-		debugger;
+
+	_processRule(rule, isRtlSource) {
 		let processedRules = [];
 
 		const { chunksMap, updatedMediaRule } = this._getFilteredMediaQuery(rule);
@@ -192,6 +199,9 @@ class ExtractCriticalCSSPlugin {
 		}
 		// add critical rules to corresponding new chunks
 		Object.keys(chunksMap).forEach(mediaRuleName => {
+			if (isRtlSource) {
+				mediaRuleName += '.' + this._options.rtlOptions.fileNameTag
+			}
 			this._criticalNodes[mediaRuleName] = this._criticalNodes[mediaRuleName].concat(processedRules);
 		});
 
@@ -232,19 +242,24 @@ class ExtractCriticalCSSPlugin {
 		compilation.chunks.forEach((chunk, key, cb) => {
 			chunk.files.forEach((asset) => {
 				if (path.extname(asset) === '.css') {
+					let isRtlSource = false;
+					if (this._rtlSupport && asset.indexOf(`.${this._options.rtlOptions.fileNameTag}.`) !== -1){
+						isRtlSource = true;
+					}
+
 					const baseSource = compilation.assets[asset].source();
 					let source = postcss.parse(baseSource);
 					let sourceModified = null;
 
 					source.walkAtRules('media', rule => {
 						if (this._atRuleFilter.test(rule.params)) {
-							const processedRules = this._processRule(rule);
+							const processedRules = this._processRule(rule, isRtlSource);
 							// replace rule in original chunk
 							rule.replaceWith(processedRules.map(processedRule => processedRule.clone()));
 							sourceModified = true;
 						}
 					});
-
+					// TODO:remove
 					if(sourceModified) {
 						source.walkAtRules('media', rule => {
 							if (this._atRuleFilter.test(rule.params)) {
