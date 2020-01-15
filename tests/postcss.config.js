@@ -3,6 +3,9 @@
 
 /* eslint-env node */
 
-module.exports = function(postcssContext) {
-	return {};
+module.exports = {
+  plugins: [
+      // used to suppress postcss warnings
+    (() => {})
+  ]
 };

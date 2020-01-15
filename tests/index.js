@@ -155,8 +155,8 @@ describe('Critical css split.', () => {
 			}
 
 			Promise.all([
-				cssnano.process(processedAsset1.source()),
-				cssnano.process(processedAsset2.source()),
+				cssnano.process(processedAsset1.source(), {from: undefined}),
+				cssnano.process(processedAsset2.source(), {from: undefined}),
 			]).then(([processedAssetMinified1, processedAssetMinified2]) => {
 				const sampleSrc1 = fs.readFileSync(`./data/sample/${entry1}`, 'utf-8');
 				const sampleSrc2 = fs.readFileSync(`./data/sample/${entry3}`, 'utf-8');
@@ -189,8 +189,8 @@ describe('Critical css split.', () => {
 			expect(processedRTLAsset).to.not.be.undefined;
 
 			Promise.all([
-				cssnano.process(processedAsset.source()),
-				cssnano.process(processedRTLAsset.source()),
+				cssnano.process(processedAsset.source(), {from: undefined}),
+				cssnano.process(processedRTLAsset.source(), {from: undefined}),
 			]).then(([processedAssetMinified, processedAssetRTLMinified]) => {
 				const sampleSrc = fs.readFileSync(`./data/sample/${asset}.css`, 'utf-8');
 				expect(processedAssetMinified.css).to.equal(sampleSrc);
@@ -226,7 +226,6 @@ describe('Watch mode', function () {
 				expect(modifiedChunks.length).to.eql(2);
 				expect(modifiedChunks).to.eql(chunksData.initialChunks);
 			}, function (modifiedChunks) {
-				debugger;
 				expect(modifiedChunks.length).to.eql(3);
 				expect(modifiedChunks).to.eql(chunksData.updatedChunks);
 				done();

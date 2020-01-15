@@ -275,7 +275,7 @@ class ExtractCriticalCSSPlugin {
 		// generate rtl-chunk for critical css
 		if (this._rtlSupport) {
 			const rtlSrc = rtlcss.process(nodeSrc, this._options.rtlOptions.rtlcssOptions, {})
-			const minifyRTLPromise = cssnano.process(rtlSrc);
+			const minifyRTLPromise = cssnano.process(rtlSrc, {from: undefined});
 			cssMinifyPromises.push(minifyRTLPromise);
 
 			const fileNameRTL = `${this._options.customMedia[mediaRuleName]}.${this._options.rtlOptions.fileNameTag}.css`;
@@ -286,10 +286,10 @@ class ExtractCriticalCSSPlugin {
 			});
 		}
 
-		const cssMinifyPromise = cssnano.process(nodeSrc);
+		const cssMinifyPromise = cssnano.process(nodeSrc, {from: undefined});
 		cssMinifyPromises.push(cssMinifyPromise);
 
-				const fileName = `${this._options.customMedia[mediaRuleName]}.css`;
+		const fileName = `${this._options.customMedia[mediaRuleName]}.css`;
 		const fileNameFull = path.basename(fileName);
 
 		cssMinifyPromise.then((result) => {
