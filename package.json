@@ -1,37 +1,41 @@
 {
-  "name": "@tradingview/webpack-extract-critical-css-plugin",
-  "version": "0.1.0",
+  "name": "webpack-extract-critical-css-plugin",
+  "version": "1.0.0",
   "description": "Webpack plugin to extract critical css from bundle",
   "main": "src/index.js",
   "author": "Anton Sychev <a.c4off@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "https://xgit.tradingview.com/asychyov/tv-webpack-extract-critical-css-plugin"
+    "url": "https://github.com/c4off/webpack-extract-critical-css-plugin"
   },
   "bugs": {
-    "url": "https://xgit.tradingview.com/asychyov/tv-webpack-extract-critical-css-plugin"
+    "url": "https://github.com/c4off/webpack-extract-critical-css-plugin"
   },
-  "homepage": "https://xgit.tradingview.com/asychyov/tv-webpack-extract-critical-css-plugin",
+  "homepage": "https://github.com/c4off/webpack-extract-critical-css-plugin",
   "keywords": [
     "webpack",
     "css",
     "rtl"
   ],
   "scripts": {
-    "clean": "rm -rf test/dist*",
+    "clean": "rm -rf ./tests/dist/* && rm -rf ./dist/*",
     "build": "test -d dist || mkdir -p dist && babel src --out-dir dist && node build && cp README.md dist/Readme.md",
-    "test": "npm run clean && npm run build && node build/prod-ready"
+    "copy_to_tests": "cd ./tests && cp -r ../dist ./node_modules/webpack-extract-critical-css-plugin",
+    "test": "npm run clean && npm install && npm run build && node build/prod-ready && npm run copy_to_tests && cd tests && npm run mocha"
   },
   "license": "MIT",
   "devDependencies": {
-    "async": "3.0.0",
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.7.0",
-    "cssnano": "^4.1.10",
+    "webpack": "^4.28.2",
+    "webpack-cli": "^3.3.10",
+    "webpack-sources": "1.3.0"
+  },
+  "dependencies": {
+    "rtlcss": "^2.4.1",
     "postcss": "^7.0.16",
     "postcss-media-query-parser": "^0.2.3",
     "postcss-value-parser": "^3.3.1",
-    "webpack": "^4.28.2",
-    "webpack-sources": "1.3.0"
+    "cssnano": "^4.1.10"
   }
 }

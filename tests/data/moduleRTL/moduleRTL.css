@@ -1,0 +1,11 @@
+@media custom-media-for-rtl {
+    .useRTLRule {
+        position: relative;
+        float: right;
+        direction: ltr;
+    }
+}
+
+.noRTLRule {
+    width: 100px;
+}

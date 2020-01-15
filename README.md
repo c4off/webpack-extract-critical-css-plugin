@@ -2,8 +2,6 @@
 
 Is used for "semi-automatic" extraction of critical parts from css bundles.
 
-Can work along with [webpack-rtl-plugin](https://github.com/romainberger/webpack-rtl-plugin).
-
 ## Installation
 
 ```shell
@@ -15,7 +13,6 @@ $ npm install webpack-extract-critical-css-plugin
 Add the plugin to your webpack configuration:
 
 ```js
-const WebpackRTLPlugin = require('webpack-rtl-plugin');
 const ExtractCriticalCSSPlugin = require('webpack-extract-critical-css-plugin');
 
 module.exports = {
@@ -24,29 +21,21 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     filename: 'bundle.js',
   },
-  module: {
-    loaders: [
-      {
-        test: /\.css$/,
-        loader: ExtractTextPlugin.extract('style-loader', 'css-loader'),
-      }
-    ],
-  },
+  ...
   plugins: [
-    new WebpackRTLPlugin(),
      new ExtractCriticalCSSPlugin({
+        customMedia: {
+            'feed-widget-idea-critical': 'feed-widget-idea-critical'
+        },
         minimize: {
             browsers: ['> 1%', 'last 2 versions', 'Firefox >= 20'],
             preset: 'default',
         },
-        customMedia: {
-            'feed-widget-idea-critical': 'feed-widget-idea-critical'
-        },
-        minify: !isDev,
-        rtlPluginSupport: true,
+        rtlSupport: true,
         rtlOptions: {
             // should be surrounded by dots. E.g. `filename.rtl.css`
-            fileNameTag: 'rtl'
+            fileNameTag: 'rtl',
+            rtlcssOptions: {},
         }
     })
   ],
@@ -60,27 +49,10 @@ This will create `feed-widget-idea-critical.css`, containing critical css rules.
 
 ## Options
 
-```
-new ExtractCriticalCSSPlugin({
-	minimize: {
-		browsers: ['> 1%', 'last 2 versions', 'Firefox >= 20'],
-		preset: 'default',
-	},
-	customMedia: {
-		'feed-widget-idea-critical': 'feed-widget-idea-critical'
-	},
-	minify: !isDev,
-	rtlPluginSupport: true,
-	rtlOptions: {
-		// should be surrounded by dots. E.g. `filename.rtl.css`
-		fileNameTag: 'rtl'
-	}
-})
-```
-
+* `customMedia` [Array], required, holding map for custom @media-queries to filename, that will be produced 
 * `minimize` [Array] options will be passed to `cssnano` minimizer.
-* `customMedia` [Array], holding map for custom @media-queries to filename, that will be produced for the rules under this query.
-* `minify` [boolean] will minify the result
-* `rtlPluginSupport` [boolean] will separately parse rtl-versions of chunks
+for the rules under this query.
+* `rtlSupport` [boolean] will separately parse rtl-versions of chunks
 * `rtlOptions` [Array] of options fot rtl support
-    * `fileNameTag` [string] 'rtl', by default. an additional part of rtl-version of chunk. E.g. filename.rtl.css
+    * `fileNameTag` [string] 'rtl', by default. an additional part of rtl-version of chunk. E.g. filename.rtl.css . If custom media is 'critical-styles' two files will be produced: `critical-styles.css` and `critical-styles.rtl.css`,
+    * `rtlcssOptions` [Object] options, that will be passed to `rtlcss` processor

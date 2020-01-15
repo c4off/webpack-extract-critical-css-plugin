@@ -1,0 +1,53 @@
+[
+  {
+    "initialChunks": [
+      {
+        "asset": "entry1.css",
+        "chunk": "entry1",
+        "contentHash": {
+          "css/mini-extract": "014b6a6a379123281bd6",
+          "javascript": "b159218cd661d71d38b9"
+        },
+        "renderedHash": "f6159d65a3486d25a707"
+      },
+      {
+        "asset": "entry2.css",
+        "chunk": "entry2",
+        "contentHash": {
+          "css/mini-extract": "63f3dbe58e3a44182da3",
+          "javascript": "52d7b0ff47eb2eaaace2"
+        },
+        "renderedHash": "0383f474376205aaaa5e"
+      }
+    ],
+    "updatedChunks": [
+      {
+        "asset": "entry1.css",
+        "chunk": "entry1",
+        "contentHash": {
+          "css/mini-extract": "014b6a6a379123281bd6",
+          "javascript": "b159218cd661d71d38b9"
+        },
+        "renderedHash": "f6159d65a3486d25a707"
+      },
+      {
+        "asset": "entry2.css",
+        "chunk": "entry2",
+        "contentHash": {
+          "css/mini-extract": "63f3dbe58e3a44182da3",
+          "javascript": "52d7b0ff47eb2eaaace2"
+        },
+        "renderedHash": "0383f474376205aaaa5e"
+      },
+      {
+        "asset": "entry1.css",
+        "chunk": "entry1",
+        "contentHash": {
+          "css/mini-extract": "ee953039e779bd26e913",
+          "javascript": "b6dab0bcaaced7cf8ad3"
+        },
+        "renderedHash": "8d326935b9dbb59f3f68"
+      }
+    ]
+  }
+]
