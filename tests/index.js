@@ -175,7 +175,7 @@ describe('Critical css split.', () => {
 		const asset = 'custom-media-for-rtl';
 
 		const config = prepareConfig(preparePlugin({
-			rtlPluginSupport: true
+			rtlSupport: true
 		}), {
 			entryRTL: './data/moduleRTL/moduleRTL.js'
 		});

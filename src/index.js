@@ -13,7 +13,7 @@ const defaultOptions = {
 		browsers: ['> 1%', 'last 2 versions', 'Firefox >= 20'],
 		preset: 'default',
 	},
-	rtlPluginSupport: false,
+	rtlSupport: false,
 	rtlOptions: {
 		// should be surrounded by dots. E.g. `filename.rtl.css`
 		fileNameTag: 'rtl',
@@ -40,7 +40,7 @@ class ExtractCriticalCSSPlugin {
 		}
 
 		this._options = Object.assign({}, defaultOptions, options);
-		this._rtlSupport = this._options.rtlPluginSupport;
+		this._rtlSupport = this._options.rtlSupport;
 
 		this._debug = this._options.debug || false;
 

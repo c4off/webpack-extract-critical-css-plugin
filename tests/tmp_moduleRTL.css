@@ -1,8 +1,12 @@
 @media custom-media-for-rtl {
     .useRTLRule {
-        position: relative;
         float: right;
+        position: relative;
         direction: ltr;
+    }
+    .mixedRule {
+        /*!rtl:raw: margin-right: 4px; */
+        margin-right: 4px;
     }
 }
 

@@ -5,7 +5,6 @@
 
 module.exports = {
   plugins: [
-      // used to suppress postcss warnings
-    (() => {})
+     require('postcss-nested'),
   ]
 };

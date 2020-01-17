@@ -2,6 +2,7 @@
   "name": "webpack-extract-critical-css-plugin-tests",
   "version": "0.2.0",
   "dependencies": {
+    "postcss-nested": "^4.2.1",
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10"
   },
